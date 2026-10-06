@@ -1,0 +1,30 @@
+{
+  "results": [
+    {
+      "id": 1001,
+      "name": "Hanoi US Embassy",
+      "coordinates": {
+        "latitude": 21.0288,
+        "longitude": 105.8514
+      },
+      "sensors": [
+        {
+          "id": 42,
+          "parameter": {
+            "id": 2,
+            "name": "pm25",
+            "units": "ug/m3",
+            "displayName": "PM2.5"
+          }
+        }
+      ]
+    }
+  ],
+  "meta": {
+    "name": "openaq-api",
+    "website": "openaq.org",
+    "page": 1,
+    "limit": 100,
+    "found": 1
+  }
+}

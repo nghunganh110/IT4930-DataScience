@@ -1,0 +1,21 @@
+{
+  "results": [
+    {
+      "id": 42,
+      "name": "Hanoi US Embassy",
+      "datetimeFirst": {
+        "utc": "2020-01-01T00:00:00Z",
+        "local": "2020-01-01T07:00:00+07:00"
+      },
+      "datetimeLast": {
+        "utc": "2025-09-30T23:00:00Z",
+        "local": "2025-10-01T06:00:00+07:00"
+      },
+      "parameter": {
+        "id": 2,
+        "name": "pm25",
+        "units": "ug/m3"
+      }
+    }
+  ]
+}
