@@ -226,6 +226,8 @@ data/processed/*
 !data/processed/.gitkeep
 artifacts/data_feasibility/*
 !artifacts/data_feasibility/.gitkeep
+artifacts/eda_pm25/*
+!artifacts/eda_pm25/.gitkeep
 
 # AI Development Workflow
 docs/ai/

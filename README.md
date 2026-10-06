@@ -75,3 +75,15 @@ airguard-data ingest-openaq \
 
 It writes `hourly_pm25.csv`, a manifest, and JSON/Markdown quality reports.
 Generated raw and processed data stay outside Git.
+
+## Run PM2.5 EDA and Dataset Preparation
+
+After downloading historical data, run the EDA to generate charts, reports, and the segmentation modeling dataset:
+
+```bash
+airguard-data eda-pm25 \
+  --input data/processed/openaq_sensor_21632/hourly_pm25.csv \
+  --output-dir artifacts/eda_pm25 \
+  --modeling-output data/processed/openaq_sensor_21632/modeling_pm25.csv \
+  --gap-hours 24
+```

@@ -93,6 +93,12 @@ def get_parser() -> argparse.ArgumentParser:
     ingest.add_argument("--max-pages-per-month", type=int, default=100)
     ingest.add_argument("--offline-fixtures", default=None, metavar="PATH")
 
+    eda = sub.add_parser("eda-pm25", help="Run PM2.5 EDA and dataset preparation")
+    eda.add_argument("--input", required=True, help="Input historical canonical CSV")
+    eda.add_argument("--output-dir", required=True, help="Directory for EDA charts and reports")
+    eda.add_argument("--modeling-output", required=True, help="Path for output modeling CSV")
+    eda.add_argument("--gap-hours", type=int, default=24, help="Missing hours to break segment")
+
     return parser
 
 
@@ -251,6 +257,20 @@ def main() -> None:
             sys.exit(code)
         except Exception as exc:
             print(f"Configuration error: {exc}", file=sys.stderr)
+            sys.exit(1)
+
+    if args.command == "eda-pm25":
+        from .eda import run_eda
+        try:
+            code = run_eda(
+                input_csv=args.input,
+                output_dir=args.output_dir,
+                modeling_output=args.modeling_output,
+                gap_hours=args.gap_hours,
+            )
+            sys.exit(code)
+        except Exception as exc:
+            print(f"EDA error: {exc}", file=sys.stderr)
             sys.exit(1)
 
     try:

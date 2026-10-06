@@ -13,3 +13,7 @@ directory. The normalized, reproducible audit artifacts are written to
 `data/processed/` holds reproducible, generated canonical datasets. The
 historical OpenAQ ingestion command writes one CSV, a manifest, and quality
 reports per output directory; those files are also ignored by Git.
+
+The `eda-pm25` command reads the canonical CSV and writes the segmentation
+modeling dataset (e.g. `modeling_pm25.csv`) to `data/processed/` as well,
+and places its visual reports in `artifacts/eda_pm25/`.

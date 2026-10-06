@@ -232,3 +232,31 @@ class TestParserValidation:
         )
         with pytest.raises(ValueError, match="radius_m"):
             config.validate()
+
+
+class TestEDA_CLI:
+    def test_eda_pm25_parser(self):
+        parser = get_parser()
+
+        # Test default gap_hours
+        args = parser.parse_args([
+            "eda-pm25",
+            "--input", "in.csv",
+            "--output-dir", "out",
+            "--modeling-output", "mod.csv"
+        ])
+        assert args.command == "eda-pm25"
+        assert args.input == "in.csv"
+        assert args.output_dir == "out"
+        assert args.modeling_output == "mod.csv"
+        assert args.gap_hours == 24
+
+        # Test explicit gap_hours
+        args2 = parser.parse_args([
+            "eda-pm25",
+            "--input", "in.csv",
+            "--output-dir", "out",
+            "--modeling-output", "mod.csv",
+            "--gap-hours", "48"
+        ])
+        assert args2.gap_hours == 48
