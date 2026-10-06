@@ -87,3 +87,50 @@ airguard-data eda-pm25 \
   --modeling-output data/processed/openaq_sensor_21632/modeling_pm25.csv \
   --gap-hours 24
 ```
+
+## Làm việc nhóm: dùng chung dữ liệu
+
+Repository **không lưu dữ liệu sinh ra, raw snapshot hay file `.env`**. Mỗi
+thành viên phải dùng cùng một data snapshot do nhóm phát hành để EDA, feature,
+model và báo cáo cho ra kết quả nhất quán.
+
+### Lấy data snapshot
+
+Người phụ trách dữ liệu (data owner) chia sẻ một thư mục Drive/OneDrive theo
+phiên bản, ví dụ `openaq-21632-2017-01-01_2025-04-09`. Link snapshot hiện hành
+được nhóm quản lý ngoài repository; hãy hỏi data owner trước khi bắt đầu.
+
+Tải bốn file sau từ snapshot và đặt nguyên tên vào:
+
+```text
+data/processed/openaq_sensor_21632/
+├── hourly_pm25.csv
+├── manifest.json
+├── quality_report.json
+└── quality_report.md
+```
+
+- `hourly_pm25.csv` là canonical dataset bắt buộc.
+- `manifest.json` ghi provenance, khoảng thời gian và checksum; hãy đối chiếu
+  file này trước khi chạy thí nghiệm.
+- Không tự sửa hoặc thay thế `hourly_pm25.csv`. Nếu phát hiện lỗi, báo data
+  owner để phát hành snapshot version mới cho cả nhóm.
+- Không upload `.env`, `OPENAQ_API_KEY`, raw API response hoặc data snapshot
+  lên GitHub.
+
+### Tái tạo modelling dataset và EDA tại máy cá nhân
+
+Sau khi đặt snapshot đúng vị trí, chạy lệnh dưới đây. `modeling_pm25.csv` và
+toàn bộ biểu đồ/báo cáo EDA là output tái tạo được nên không cần tải từ Drive
+hay commit vào Git.
+
+```bash
+airguard-data eda-pm25 \
+  --input data/processed/openaq_sensor_21632/hourly_pm25.csv \
+  --output-dir artifacts/eda_pm25 \
+  --modeling-output data/processed/openaq_sensor_21632/modeling_pm25.csv \
+  --gap-hours 24
+```
+
+Nếu lệnh thành công, các thành viên có cùng `hourly_pm25.csv` sẽ nhận được
+cùng modelling dataset, summary report và bốn biểu đồ EDA.
