@@ -88,6 +88,45 @@ airguard-data eda-pm25 \
   --gap-hours 24
 ```
 
+## Download and Merge Historical Weather
+
+Weather is an exogenous feature source. This milestone ingests historical weather and merges it with PM2.5 observations.
+
+```bash
+# Ingest Open-Meteo weather matching the target location and range
+airguard-data ingest-weather \
+  --latitude 21.021939 --longitude 105.818806 \
+  --start 2017-01-01 --end 2025-04-09 \
+  --output-dir data/processed/weather_hanoi
+
+# Merge weather into PM2.5 data
+airguard-data merge-pm25-weather \
+  --pm25-input data/processed/openaq_sensor_21632/hourly_pm25.csv \
+  --weather-input data/processed/weather_hanoi/hourly_weather.csv \
+  --output data/processed/openaq_sensor_21632/pm25_weather.csv \
+  --report-dir artifacts/weather_integration
+```
+
+**Availability and Leakage Policy:**
+Historical Open-Meteo reanalysis is valid for data understanding and for features observed at or before issue time `t`. It must not be used as a realized `t+h` predictor for a forecast issued at `t`. A later, separate forecast-weather contract is required before using forecast-weather values at `t+h`.
+
+## Build the Feature Table
+
+After merging PM2.5 and weather data, generate the time-lagged features and future horizons:
+
+```bash
+airguard-data build-features \
+  --input data/processed/openaq_sensor_21632/pm25_weather.csv \
+  --output data/processed/openaq_sensor_21632/features_pm25_weather.csv \
+  --report-dir artifacts/feature_engineering \
+  --horizons 1,6,12,24 \
+  --lags 1,2,3,6,12,24,48,72,168 \
+  --rolling-windows 3,6,12,24,168 \
+  --local-timezone Asia/Ho_Chi_Minh
+```
+
+This table is locally derived and reproducible. It is strictly leakage-safe: no PM2.5 imputation is done, features do not cross missing-data boundaries, and current weather features do not use realized future reanalysis.
+
 ## Làm việc nhóm: dùng chung dữ liệu
 
 Repository **không lưu dữ liệu sinh ra, raw snapshot hay file `.env`**. Mỗi

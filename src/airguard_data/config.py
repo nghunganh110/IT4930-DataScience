@@ -108,3 +108,25 @@ class OpenAQIngestionConfig:
             raise ValueError("timeout_seconds and max_pages_per_month must be positive")
         if not self.output_dir.strip() or not self.raw_dir.strip():
             raise ValueError("output_dir and raw_dir must be non-empty")
+
+
+@dataclass
+class WeatherIngestionConfig:
+    latitude: float
+    longitude: float
+    start_date: date
+    end_date: date
+    output_dir: str
+    raw_dir: str = "data/raw/open_meteo"
+    timeout_seconds: int = 30
+    offline_fixtures: Optional[str] = None
+
+    def validate(self) -> None:
+        if not (-90 <= self.latitude <= 90) or not (-180 <= self.longitude <= 180):
+            raise ValueError("latitude/longitude are out of range")
+        if self.start_date > self.end_date:
+            raise ValueError("start_date must be before or equal to end_date")
+        if not self.output_dir.strip() or not self.raw_dir.strip():
+            raise ValueError("output_dir and raw_dir must be non-empty")
+        if self.timeout_seconds <= 0:
+            raise ValueError("timeout_seconds must be positive")

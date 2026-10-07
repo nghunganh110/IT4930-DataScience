@@ -260,3 +260,127 @@ class TestEDA_CLI:
             "--gap-hours", "48"
         ])
         assert args2.gap_hours == 48
+
+class TestWeatherCLI:
+    def test_ingest_weather_parser(self):
+        parser = get_parser()
+        args = parser.parse_args([
+            "ingest-weather",
+            "--latitude", "21.0",
+            "--longitude", "105.8",
+            "--start", "2024-01-01",
+            "--end", "2024-01-02",
+            "--output-dir", "out_dir",
+            "--offline-fixtures", "fix_dir"
+        ])
+        assert args.command == "ingest-weather"
+        assert args.latitude == 21.0
+        assert args.longitude == 105.8
+        assert args.start == "2024-01-01"
+        assert args.end == "2024-01-02"
+        assert args.output_dir == "out_dir"
+        assert args.raw_dir == "data/raw/open_meteo"  # default
+        assert args.timeout_seconds == 30  # default
+        assert args.offline_fixtures == "fix_dir"
+
+        args2 = parser.parse_args([
+            "ingest-weather",
+            "--latitude", "21.0",
+            "--longitude", "105.8",
+            "--start", "2024-01-01",
+            "--end", "2024-01-02",
+            "--output-dir", "out_dir",
+            "--raw-dir", "custom_raw",
+            "--timeout-seconds", "15"
+        ])
+        assert args2.raw_dir == "custom_raw"
+        assert args2.timeout_seconds == 15
+
+    def test_merge_pm25_weather_parser(self):
+        parser = get_parser()
+        args = parser.parse_args([
+            "merge-pm25-weather",
+            "--pm25-input", "pm25.csv",
+            "--weather-input", "weather.csv",
+            "--output", "merged.csv",
+            "--report-dir", "reports"
+        ])
+        assert args.command == "merge-pm25-weather"
+        assert args.pm25_input == "pm25.csv"
+        assert args.weather_input == "weather.csv"
+        assert args.output == "merged.csv"
+        assert args.report_dir == "reports"
+
+    def test_build_features_parser(self):
+        parser = get_parser()
+        args = parser.parse_args([
+            "build-features",
+            "--input", "in.csv",
+            "--output", "out.csv",
+            "--report-dir", "reports"
+        ])
+        assert args.command == "build-features"
+        assert args.input == "in.csv"
+        assert args.output == "out.csv"
+        assert args.report_dir == "reports"
+        assert args.horizons == "1,6,12,24"
+        assert args.lags == "1,2,3,6,12,24,48,72,168"
+        assert args.rolling_windows == "3,6,12,24,168"
+        assert args.local_timezone == "Asia/Ho_Chi_Minh"
+
+    @patch("sys.argv", new=["airguard-data", "ingest-weather"])
+    def test_weather_integration_cli_e2e(self, tmp_path):
+        from airguard_data.cli import main
+        import json
+        import pandas as pd
+
+        # 1. Setup mock fixture for weather
+        fixtures_dir = Path(__file__).parent / "fixtures" / "weather"
+
+        # 2. Setup mock pm25 input
+        pm25_path = tmp_path / "pm25.csv"
+        pm25_df = pd.DataFrame({
+            "timestamp_utc": ["2024-01-01T00:00:00Z", "2024-01-01T01:00:00Z"],
+            "pm2_5_ug_m3": [10.0, 15.0],
+            "is_valid": [True, True]
+        })
+        pm25_df.to_csv(pm25_path, index=False)
+
+        out_wx = tmp_path / "out_wx"
+        out_merged = tmp_path / "merged.csv"
+        out_reports = tmp_path / "reports"
+
+        # Run ingest-weather
+        with patch("sys.argv", [
+            "airguard-data", "ingest-weather",
+            "--latitude", "21.0", "--longitude", "105.8",
+            "--start", "2024-01-01", "--end", "2024-01-01",
+            "--output-dir", str(out_wx),
+            "--offline-fixtures", str(fixtures_dir)
+        ]):
+            with pytest.raises(SystemExit) as e:
+                main()
+            assert e.value.code == 0
+
+        wx_csv = out_wx / "hourly_weather.csv"
+        assert wx_csv.exists()
+        assert (out_wx / "weather_manifest.json").exists()
+        assert (out_wx / "weather_quality_report.json").exists()
+
+        # Run merge-pm25-weather
+        with patch("sys.argv", [
+            "airguard-data", "merge-pm25-weather",
+            "--pm25-input", str(pm25_path),
+            "--weather-input", str(wx_csv),
+            "--output", str(out_merged),
+            "--report-dir", str(out_reports)
+        ]):
+            with pytest.raises(SystemExit) as e:
+                main()
+            assert e.value.code == 0
+
+        merged_csv_content = pd.read_csv(out_merged)
+        assert len(merged_csv_content) == 2
+        assert "weather_available" in merged_csv_content.columns
+        assert (out_reports / "merge_report.json").exists()
+        assert (out_reports / "merge_report.md").exists()

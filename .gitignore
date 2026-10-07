@@ -231,3 +231,7 @@ artifacts/eda_pm25/*
 
 # AI Development Workflow
 docs/ai/
+artifacts/weather_integration/*
+!artifacts/weather_integration/.gitkeep
+artifacts/feature_engineering/*
+!artifacts/feature_engineering/.gitkeep

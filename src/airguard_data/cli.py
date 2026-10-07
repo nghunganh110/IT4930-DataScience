@@ -28,13 +28,15 @@ from typing import Any, Dict, Optional, Tuple
 
 import pandas as pd
 
-from .config import FeasibilityConfig, OpenAQIngestionConfig, OPENAQ_MAX_RADIUS_M, SUPPORTED_SOURCES
+from .config import FeasibilityConfig, OpenAQIngestionConfig, WeatherIngestionConfig, OPENAQ_MAX_RADIUS_M, SUPPORTED_SOURCES
 from .contracts import SourceStatus
 from .sources import OpenAQAdapter, AirNowAdapter, HanoiPortalAdapter
 from .profile import profile_series
 from .report import write_json_report, write_markdown_report
 from .normalize import create_empty_canonical_df
 from .ingest import ingest_openaq
+from .weather import ingest_weather
+from .weather_merge import merge_pm25_weather
 
 # ---------------------------------------------------------------------------
 # Argument parser
@@ -98,6 +100,31 @@ def get_parser() -> argparse.ArgumentParser:
     eda.add_argument("--output-dir", required=True, help="Directory for EDA charts and reports")
     eda.add_argument("--modeling-output", required=True, help="Path for output modeling CSV")
     eda.add_argument("--gap-hours", type=int, default=24, help="Missing hours to break segment")
+
+    ingest_wx = sub.add_parser("ingest-weather", help="Download historical Open-Meteo weather data")
+    ingest_wx.add_argument("--latitude", required=True, type=float)
+    ingest_wx.add_argument("--longitude", required=True, type=float)
+    ingest_wx.add_argument("--start", required=True, metavar="YYYY-MM-DD")
+    ingest_wx.add_argument("--end", required=True, metavar="YYYY-MM-DD")
+    ingest_wx.add_argument("--output-dir", required=True)
+    ingest_wx.add_argument("--raw-dir", default="data/raw/open_meteo")
+    ingest_wx.add_argument("--timeout-seconds", type=int, default=30)
+    ingest_wx.add_argument("--offline-fixtures", default=None, metavar="PATH")
+
+    merge_wx = sub.add_parser("merge-pm25-weather", help="Merge PM2.5 and Weather data")
+    merge_wx.add_argument("--pm25-input", required=True)
+    merge_wx.add_argument("--weather-input", required=True)
+    merge_wx.add_argument("--output", required=True)
+    merge_wx.add_argument("--report-dir", required=True)
+
+    build_feat = sub.add_parser("build-features", help="Build PM2.5 and Weather features")
+    build_feat.add_argument("--input", required=True)
+    build_feat.add_argument("--output", required=True)
+    build_feat.add_argument("--report-dir", required=True)
+    build_feat.add_argument("--horizons", default="1,6,12,24", help="Comma-separated list of target horizons")
+    build_feat.add_argument("--lags", default="1,2,3,6,12,24,48,72,168", help="Comma-separated list of lags")
+    build_feat.add_argument("--rolling-windows", default="3,6,12,24,168", help="Comma-separated list of rolling windows")
+    build_feat.add_argument("--local-timezone", default="Asia/Ho_Chi_Minh", help="Local timezone")
 
     return parser
 
@@ -271,6 +298,60 @@ def main() -> None:
             sys.exit(code)
         except Exception as exc:
             print(f"EDA error: {exc}", file=sys.stderr)
+            sys.exit(1)
+
+    if args.command == "ingest-weather":
+        try:
+            config = WeatherIngestionConfig(
+                latitude=args.latitude,
+                longitude=args.longitude,
+                start_date=datetime.strptime(args.start, "%Y-%m-%d").date(),
+                end_date=datetime.strptime(args.end, "%Y-%m-%d").date(),
+                output_dir=args.output_dir,
+                raw_dir=args.raw_dir,
+                timeout_seconds=args.timeout_seconds,
+                offline_fixtures=args.offline_fixtures,
+            )
+            code, result = ingest_weather(config)
+            if code:
+                print(result.get("message", result.get("status", "weather ingestion failed")), file=sys.stderr)
+            sys.exit(code)
+        except Exception as exc:
+            print(f"Configuration error: {exc}", file=sys.stderr)
+            sys.exit(1)
+
+    if args.command == "merge-pm25-weather":
+        try:
+            merge_pm25_weather(
+                pm25_path=args.pm25_input,
+                weather_path=args.weather_input,
+                output_path=args.output,
+                report_dir=args.report_dir
+            )
+            sys.exit(0)
+        except Exception as exc:
+            print(f"Merge error: {exc}", file=sys.stderr)
+            sys.exit(1)
+
+    if args.command == "build-features":
+        from .features import build_features, parse_int_list_option
+        try:
+            horizons = parse_int_list_option(args.horizons)
+            lags = parse_int_list_option(args.lags)
+            rolling_windows = parse_int_list_option(args.rolling_windows)
+
+            build_features(
+                input_path=args.input,
+                output_path=args.output,
+                report_dir=args.report_dir,
+                horizons=horizons,
+                lags=lags,
+                rolling_windows=rolling_windows,
+                local_timezone=args.local_timezone
+            )
+            sys.exit(0)
+        except Exception as exc:
+            print(f"Feature building error: {exc}", file=sys.stderr)
             sys.exit(1)
 
     try:
